@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#0b0f14"/>
+  <text x="80" y="110" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="34" fill="#c9d4e0" font-weight="bold">"Tests pass" is a claim. A receipt is evidence.</text>
+  <text x="80" y="160" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" fill="#8899aa">Every test run is bound to a fingerprint of the working tree. Change one byte and it goes stale.</text>
+  <g font-family="Consolas, 'Courier New', monospace" font-size="27">
+    <rect x="80" y="210" width="1440" height="96" rx="14" fill="#111821" stroke="#1f3a2a" stroke-width="2"/>
+    <text x="110" y="250" fill="#7fd1a8" font-weight="bold">VALID</text>
+    <text x="110" y="286" fill="#c9d4e0">r-3f9a2c1e · npm test · 23 passed, 0 failed · 12s ago · tree matches</text>
+    <rect x="80" y="326" width="1440" height="96" rx="14" fill="#111821" stroke="#3a3122" stroke-width="2"/>
+    <text x="110" y="366" fill="#ffd166" font-weight="bold">STALE</text>
+    <text x="110" y="402" fill="#c9d4e0">2 files changed since r-3f9a2c1e (src/user.js, src/api.js). Re-run the tests.</text>
+    <rect x="80" y="442" width="1440" height="96" rx="14" fill="#111821" stroke="#3a2222" stroke-width="2"/>
+    <text x="110" y="482" fill="#ff6b6b" font-weight="bold">FAILED</text>
+    <text x="110" y="518" fill="#c9d4e0">r-264a5feb · npm test · the command exited 1 (20 passed, 3 failed).</text>
+    <rect x="80" y="558" width="1440" height="96" rx="14" fill="#111821" stroke="#2a2f37" stroke-width="2"/>
+    <text x="110" y="598" fill="#8899aa" font-weight="bold">MISSING</text>
+    <text x="110" y="634" fill="#c9d4e0">no receipt in this repo. Run the tests through alibi first.</text>
+    <rect x="80" y="674" width="1440" height="96" rx="14" fill="#111821" stroke="#3a2222" stroke-width="2"/>
+    <text x="110" y="714" fill="#ff6b6b" font-weight="bold">TAMPERED</text>
+    <text x="110" y="750" fill="#c9d4e0">r-ab1c544e · receipt content does not match its id. It was edited after it was written.</text>
+  </g>
+  <text x="80" y="850" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24" fill="#6b7a8c">github.com/codegobrrrr9/alibi · one Node file, zero dependencies · the agent must quote VALID before it may say tests pass</text>
+</svg>

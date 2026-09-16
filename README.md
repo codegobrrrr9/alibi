@@ -128,6 +128,8 @@ for eight runners, and both hooks fed with real stdin payloads, including the lo
 
 ### Against a real agent
 
+![the Stop hook bouncing a stale claim](media/bounce.png)
+
 Two headless Claude Code sessions with the plugin loaded, on a three-test fixture:
 
 1. *"Run npm test and tell me whether the tests pass."* The hook rewrote the command, a receipt was
