@@ -79,9 +79,11 @@ function transcriptFacts(dir, sessionId) {
     i++;
     if (o.type === 'assistant') for (const b of o.message?.content || []) {
       if (b.type !== 'tool_use') continue;
-      if (b.name === 'Bash' && TEST.test(String(b.input?.command || ''))) { lastTest = i; testRuns++; if (/alibi\.js" run/.test(b.input.command)) receipted++; }
+      if (b.name === 'Bash' && TEST.test(String(b.input?.command || ''))) { lastTest = i; testRuns++; }
       if (b.name === 'Edit' || b.name === 'Write' || b.name === 'MultiEdit') lastEdit = i;
     }
+    // the rewrite happens inside the hook; the tool call keeps the original command, the hook's stdout shows the rewrite
+    if (o.type === 'attachment' && o.attachment?.type === 'hook_success' && /alibi: recording test run/.test(String(o.attachment.stdout || ''))) receipted++;
     if (o.type === 'user') { const c = o.message?.content; const s = typeof c === 'string' ? c : JSON.stringify(c || ''); if (/alibi: (STALE|MISSING|FAILED|TAMPERED)/.test(s) && /Your last message says the tests pass/.test(s)) stopBlocks++; }
   }
   return { editedAfterLastTest: lastEdit > lastTest, testRuns, receipted, stopBlocks };
