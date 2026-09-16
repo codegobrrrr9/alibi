@@ -1,0 +1,10 @@
+{
+  "name": "alibi",
+  "version": "0.1.0",
+  "description": "Your agent needs an alibi. Receipts that prove the tests actually ran on the code that shipped; a 'tests pass' claim without one is sent back.",
+  "author": { "name": "codegobrrrr9", "url": "https://github.com/codegobrrrr9" },
+  "homepage": "https://github.com/codegobrrrr9/alibi",
+  "repository": "https://github.com/codegobrrrr9/alibi",
+  "license": "MIT",
+  "keywords": ["tests", "verification", "receipts", "hooks", "trust", "claude-code"]
+}

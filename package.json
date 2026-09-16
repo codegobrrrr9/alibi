@@ -1,0 +1,14 @@
+{
+  "name": "alibi-skill",
+  "version": "0.1.0",
+  "description": "Your agent needs an alibi. Receipts that prove the tests actually ran, on the code that shipped.",
+  "type": "module",
+  "bin": { "alibi": "./skills/alibi/scripts/alibi.js" },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "repository": { "type": "git", "url": "https://github.com/codegobrrrr9/alibi" },
+  "keywords": ["claude-skills", "agent-skills", "claude-code", "codex", "cursor", "tests", "verification", "receipts", "hooks"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}

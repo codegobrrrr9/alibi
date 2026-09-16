@@ -1,0 +1,18 @@
+{
+  "name": "alibi",
+  "owner": { "name": "codegobrrrr9", "url": "https://github.com/codegobrrrr9" },
+  "metadata": { "description": "Proof that the tests actually ran.", "version": "0.1.0" },
+  "plugins": [
+    {
+      "name": "alibi",
+      "source": "./",
+      "description": "Your agent needs an alibi. Receipts that prove the tests ran on the code that shipped.",
+      "version": "0.1.0",
+      "author": { "name": "codegobrrrr9" },
+      "homepage": "https://github.com/codegobrrrr9/alibi",
+      "license": "MIT",
+      "keywords": ["tests", "verification", "receipts", "hooks"],
+      "category": "testing"
+    }
+  ]
+}

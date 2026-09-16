@@ -1,0 +1,9 @@
+{
+  "name": "tiny-repo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/math.test.js",
+    "test:fail": "node --test broken/fail.test.js"
+  }
+}

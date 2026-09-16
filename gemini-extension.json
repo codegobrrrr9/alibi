@@ -1,0 +1,6 @@
+{
+  "name": "alibi",
+  "version": "0.1.0",
+  "description": "Your agent needs an alibi. Receipts that prove the tests actually ran.",
+  "contextFileName": "AGENTS.md"
+}
