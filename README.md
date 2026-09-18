@@ -7,7 +7,7 @@
 Receipts that prove the tests actually ran, on the code that shipped. A "tests pass" claim without one gets sent back.
 
 [![test](https://github.com/codegobrrrr9/alibi/actions/workflows/test.yml/badge.svg)](https://github.com/codegobrrrr9/alibi/actions/workflows/test.yml)
-[![license](https://img.shields.io/github/license/codegobrrrr9/alibi)](LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)
 
 </div>
