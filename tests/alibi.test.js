@@ -68,7 +68,10 @@ test('run writes a receipt, exits with the command code, footer on stderr, stdou
 test('VALID right after a passing run, even though .gitignore was just edited', () => {
   const v = verify('last', dir);
   assert.equal(v.verdict, 'VALID', JSON.stringify(v));
-  assert.deepEqual(v.summary, { runner: 'node:test', passed: 3, failed: 0 });
+  // node --test prints the spec reporter on Node 23+, TAP on Node 22 when stdout is a pipe; both parse
+  assert.ok(['node:test', 'tap'].includes(v.summary.runner), v.summary.runner);
+  assert.equal(v.summary.passed, 3);
+  assert.equal(v.summary.failed, 0);
   assert.match(statusLine(v), /^VALID r-[0-9a-f]{8} · npm test · 3 passed, 0 failed · \d+s ago · tree matches$/);
 });
 
