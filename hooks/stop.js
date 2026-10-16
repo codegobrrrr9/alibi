@@ -8,7 +8,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const CLAIM = /\b(tests?|suite|specs?|test suite|unit tests|e2e)\b[^.\n]{0,40}\b(pass|passes|passed|passing|green|succeed|succeeds|succeeded|successful)\b|\b(all|every|the)\b[^.\n]{0,30}\btests?\b[^.\n]{0,20}\b(pass|passes|passing|passed)\b|\b\d+\s+(tests?|specs?)\s+(pass|passed|passing)\b|\bpass(?:ed|ing)?\s*[:(]\s*\d+|✅.{0,40}\btests?\b|\btests?\b.{0,40}✅|\ball green\b/i;
-const EXEMPT = /\balibi:\s*(STALE|FAILED|MISSING|TAMPERED)\b|\bcannot run the tests\b|\bcould not run the tests\b|\btests? (do not|don't|did not|didn't|cannot|can't) (run|pass)\b|\bnot (yet )?(run|verified)\b/i;
+const EXEMPT = /\balibi:\s*(STALE|FAILED|MISSING|TAMPERED)\b|\bcannot run the tests\b|\bcould not run the tests\b|\btests? (do not|don't|did not|didn't|cannot|can't) (run|pass)\b|\btests? (were |are |have |has )?not (yet )?(run|verified|executed)\b|\b(did not|didn't|could not|couldn't|have not|haven't) (run|execute) (the |any |all )?tests?\b/i;
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 let raw = '';

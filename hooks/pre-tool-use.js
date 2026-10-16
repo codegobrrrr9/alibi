@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Claude Code PreToolUse hook (matcher: Bash). If the command is a test run, rewrite it so it runs
+// Claude Code PreToolUse hook (matcher: Bash|PowerShell). If the command is a test run, rewrite it so it runs
 // through `alibi run`, which streams the output unchanged and writes a receipt. Anything else is
 // left alone. Must be fast: no filesystem walking, no git.
 import { dirname, join, resolve } from 'node:path';
@@ -13,7 +13,7 @@ if (isMain) process.stdin.setEncoding('utf8');
 if (isMain) process.stdin.on('data', (d) => { raw += d; });
 if (isMain) process.stdin.on('end', () => {
   let input; try { input = JSON.parse(raw); } catch { process.exit(0); }
-  if (input.tool_name !== 'Bash') process.exit(0);
+  if (input.tool_name !== 'Bash' && input.tool_name !== 'PowerShell') process.exit(0);
   const cmd = String(input.tool_input?.command || '');
   if (!cmd || !TEST_CMD.test(cmd)) process.exit(0);
   if (/alibi(\.js)?["']?\s+run\b/.test(cmd)) process.exit(0);          // already wrapped
@@ -21,7 +21,7 @@ if (isMain) process.stdin.on('end', () => {
   const root = process.env.CLAUDE_PLUGIN_ROOT || resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const alibi = join(root, 'skills', 'alibi', 'scripts', 'alibi.js').split('\\').join('/');
   const b64 = Buffer.from(cmd, 'utf8').toString('base64');
-  const rewritten = `node "${alibi}" run --b64 ${b64}`;
+  const rewritten = `node "${alibi}" run${input.tool_name === 'PowerShell' ? ' --shell powershell' : ''} --b64 ${b64}`;
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',

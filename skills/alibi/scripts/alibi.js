@@ -3,6 +3,7 @@
 //
 //   alibi run -- <cmd…>        run a command, stream its output, write a receipt, exit with its code
 //   alibi run --b64 <base64>   same, command passed base64-encoded (what the hook uses; quote-safe)
+//   alibi run --shell powershell ...   run the command with PowerShell instead of the default shell
 //   alibi status               one line: VALID / STALE / FAILED / MISSING / TAMPERED, and why
 //   alibi verify [id|last]     full verdict; --json for tooling; exit 0 only on VALID
 //   alibi check                CI gate: VALID receipt, clean tree, receipt HEAD == current HEAD
@@ -14,7 +15,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, appendFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, appendFileSync, realpathSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -184,7 +185,9 @@ export function check(cwd = process.cwd()) {
   return { ok: true, verdict: 'VALID', reason: `${v.id} matches commit ${fp.head.slice(0, 7)} with a clean tree.` };
 }
 
-export function run(cmd, cwd = process.cwd()) {
+// shell: true uses cmd.exe on Windows; a command the agent wrote for the PowerShell tool needs PowerShell.
+export function shellFor(name) { return name === 'powershell' && process.platform === 'win32' ? 'powershell.exe' : true; }
+export function run(cmd, cwd = process.cwd(), { shell } = {}) {
   return new Promise((resolveP) => {
     const startedAt = new Date().toISOString();
     const t0 = Date.now();
@@ -194,7 +197,7 @@ export function run(cmd, cwd = process.cwd()) {
     // NODE_TEST_CONTEXT), the nested runner would otherwise refuse to run the real tests.
     const env = { ...process.env, ALIBI_CHILD: '1' };
     delete env.NODE_TEST_CONTEXT; delete env.NODE_TEST_WORKER_ID;
-    const child = spawn(cmd, { cwd, shell: true, stdio: ['inherit', 'pipe', 'pipe'], env });
+    const child = spawn(cmd, { cwd, shell: shellFor(shell), stdio: ['inherit', 'pipe', 'pipe'], env });
     const tap = (stream, out) => stream.on('data', (d) => { out.write(d); hasher.update(d); bytes += d.length; if (bytes < 2 * 1024 * 1024) chunks.push(d); });
     tap(child.stdout, process.stdout); tap(child.stderr, process.stderr);
     child.on('close', (code) => {
@@ -214,7 +217,10 @@ export function run(cmd, cwd = process.cwd()) {
   });
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+// Compare real paths: when the script is reached through a symlink or junction (~/.claude/skills/<name>),
+// import.meta.url is the resolved target while argv[1] is the link, and a plain string compare says "not main".
+const samePath = (a, b) => { try { return realpathSync(a) === realpathSync(b); } catch { return a === b; } };
+const isMain = process.argv[1] && samePath(fileURLToPath(import.meta.url), resolve(process.argv[1]));
 if (isMain) {
   const args = process.argv.slice(2);
   const sub = args[0] || 'status';
@@ -226,7 +232,8 @@ if (isMain) {
       if (b >= 0) cmd = Buffer.from(args[b + 1] || '', 'base64').toString('utf8');
       else { const d = args.indexOf('--'); cmd = (d >= 0 ? args.slice(d + 1) : args.slice(1)).join(' '); }
       if (!cmd.trim()) { console.error('alibi run: nothing to run. Usage: alibi run -- <command>'); process.exit(2); }
-      const { exitCode } = await run(cmd);
+      const sh = args.indexOf('--shell');
+      const { exitCode } = await run(cmd, process.cwd(), { shell: sh >= 0 ? args[sh + 1] : undefined });
       process.exit(exitCode);
     }
     if (sub === 'verify') {

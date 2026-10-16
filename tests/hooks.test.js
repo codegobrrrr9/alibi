@@ -33,6 +33,13 @@ test('rewrites a test command into alibi run --b64, keeping other input fields',
   assert.equal(o.hookSpecificOutput.updatedInput.description, 'run tests');
 });
 
+test('rewrites a test command sent through the PowerShell tool too (Windows agents use it)', () => {
+  const r = hook(PRE, { tool_name: 'PowerShell', tool_input: { command: 'npx vitest run src/a.test.ts 2>&1 | Select-String "Tests"' } });
+  assert.equal(r.code, 0);
+  const o = JSON.parse(r.out);
+  assert.match(o.hookSpecificOutput.updatedInput.command, /^node ".*alibi.js" run --shell powershell --b64 /);
+});
+
 test('uses CLAUDE_PLUGIN_ROOT for the alibi path when set', () => {
   const r = hook(PRE, { tool_name: 'Bash', tool_input: { command: 'pytest -q' } }, { CLAUDE_PLUGIN_ROOT: 'C:\\plugins\\alibi' });
   assert.match(JSON.parse(r.out).hookSpecificOutput.updatedInput.command, /^node "C:\/plugins\/alibi\/skills\/alibi\/scripts\/alibi\.js" run --b64 /);
@@ -68,6 +75,14 @@ test('pre hook is fast', () => {
 test('claim regex catches the ways agents say tests pass, and not neutral prose', () => {
   for (const s of ['All tests pass.', 'Tests are passing now', 'the test suite is green', '23 tests passed', 'Done, tests pass ✅', 'ran npm test: 12 passed', 'All 5 specs pass.', 'Tests passed successfully']) assert.ok(CLAIM.test(s), s);
   for (const s of ['I refactored the parser.', 'Added a test for the edge case.', 'The build succeeded.', 'Passing the config through the constructor.', 'Let me run the tests.']) assert.ok(!CLAIM.test(s), s);
+});
+
+test('stop hook: a partial-run report ("I did not run the full suite") is still a claim, not an exemption', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'alibi-stop-'));
+  const r = hook(STOP, { cwd: dir, last_assistant_message: 'Shortlist selected 7 of 137 files. 232 of 243 tests passed, and 11 failed. I did not run the full suite.' });
+  assert.equal(r.code, 2);
+  assert.match(r.err, /MISSING/);
+  assert.equal(hook(STOP, { cwd: dir, last_assistant_message: 'The tests were not run; the runner is missing.' }).code, 0);
 });
 
 test('stop hook: allows when no claim, allows when stop_hook_active, blocks MISSING, allows VALID, blocks STALE', () => {
