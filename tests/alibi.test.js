@@ -1,11 +1,11 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, cpSync, rmSync, readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, cpSync, rmSync, readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { summarize, fingerprint, verify, check, listReceipts, statusLine, TEST_CMD } from '../skills/alibi/scripts/alibi.js';
+import { summarize, fingerprint, verify, check, listReceipts, statusLine, TEST_CMD, findBash } from '../skills/alibi/scripts/alibi.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ALIBI = join(here, '..', 'skills', 'alibi', 'scripts', 'alibi.js');
@@ -159,4 +159,45 @@ test('works outside git (size+mtime fingerprint)', () => {
     assert.equal(v.verdict, 'STALE');
     assert.deepEqual(v.changed, ['src/math.js']);
   } finally { rmSync(nd, { recursive: true, force: true }); }
+});
+
+// ---- found by running alibi beside tollgate in one real Claude Code session ---------------
+
+const runB64 = (d, cmd, shell) => al(d, 'run', ...(shell ? ['--shell', shell] : []), '--b64', Buffer.from(cmd).toString('base64'));
+const FAIL_THEN_PIPE = `node -e "console.log('x');process.exit(1)" | node -e "process.stdin.resume()"`;
+
+test('a failing test piped into another command is not recorded as a pass (bash, pipefail)', { skip: !findBash() }, () => {
+  const d = freshRepo();
+  assert.equal(runB64(d, FAIL_THEN_PIPE, 'bash').code, 1);
+  assert.equal(verify('last', d).verdict, 'FAILED');
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('--shell bash runs bash syntax: ";" sequences and $( ) work, not cmd.exe\'s rules', { skip: !findBash() }, () => {
+  const d = freshRepo();
+  const r = runB64(d, 'echo one; echo "two $(echo three)"', 'bash');
+  assert.equal(r.code, 0);
+  assert.match(r.out, /one\s+two three/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test('exit 0 with failures in the runner summary is FAILED, not VALID', () => {
+  const d = freshRepo();
+  const cmd = `node -e "console.log(String.fromCharCode(8505)+' pass 1');console.log(String.fromCharCode(8505)+' fail 2')"`;
+  assert.equal(runB64(d, cmd).code, 0);
+  const v = verify('last', d);
+  assert.equal(v.verdict, 'FAILED');
+  assert.match(v.reason, /exited 0 but the runner reported 1 passed, 2 failed/);
+  rmSync(d, { recursive: true, force: true });
+});
+
+test("another tool's state in .tollgate/ does not make a receipt STALE", () => {
+  const d = freshRepo();
+  assert.equal(al(d, 'run', '--', 'npm test').code, 0);
+  mkdirSync(join(d, '.tollgate'), { recursive: true });
+  writeFileSync(join(d, '.tollgate', 'ledger.jsonl'), '{"type":"add"}\n');
+  assert.equal(verify('last', d).verdict, 'VALID');
+  writeFileSync(join(d, '.tollgate', 'ledger.jsonl'), '{"type":"add"}\n{"type":"round"}\n');
+  assert.equal(verify('last', d).verdict, 'VALID');
+  rmSync(d, { recursive: true, force: true });
 });

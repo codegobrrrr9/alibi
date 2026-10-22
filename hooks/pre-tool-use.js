@@ -21,7 +21,7 @@ if (isMain) process.stdin.on('end', () => {
   const root = process.env.CLAUDE_PLUGIN_ROOT || resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const alibi = join(root, 'skills', 'alibi', 'scripts', 'alibi.js').split('\\').join('/');
   const b64 = Buffer.from(cmd, 'utf8').toString('base64');
-  const rewritten = `node "${alibi}" run${input.tool_name === 'PowerShell' ? ' --shell powershell' : ''} --b64 ${b64}`;
+  const rewritten = `node "${alibi}" run --shell ${input.tool_name === 'PowerShell' ? 'powershell' : 'bash'} --b64 ${b64}`;
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',

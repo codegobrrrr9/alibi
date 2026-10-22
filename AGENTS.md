@@ -27,7 +27,7 @@ absolute path of the copied `skills/alibi` directory and `<repo>` the cloned rep
 ```json
 {
   "hooks": {
-    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "node \"<repo>/hooks/pre-tool-use.js\"", "timeout": 10 }] }],
+    "PreToolUse": [{ "matcher": "Bash|PowerShell", "hooks": [{ "type": "command", "command": "node \"<repo>/hooks/pre-tool-use.js\"", "timeout": 10 }] }],
     "Stop": [{ "hooks": [{ "type": "command", "command": "node \"<repo>/hooks/stop.js\"", "timeout": 30 }] }]
   }
 }

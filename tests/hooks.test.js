@@ -28,7 +28,7 @@ test('rewrites a test command into alibi run --b64, keeping other input fields',
   assert.equal(o.hookSpecificOutput.hookEventName, 'PreToolUse');
   assert.equal(o.hookSpecificOutput.permissionDecision, 'allow');
   const cmd = o.hookSpecificOutput.updatedInput.command;
-  assert.match(cmd, /^node ".*alibi\.js" run --b64 [A-Za-z0-9+/=]+$/);
+  assert.match(cmd, /^node ".*alibi\.js" run --shell bash --b64 [A-Za-z0-9+/=]+$/);
   assert.equal(Buffer.from(cmd.split('--b64 ')[1], 'base64').toString(), 'npm test -- --grep "a b"');
   assert.equal(o.hookSpecificOutput.updatedInput.description, 'run tests');
 });
@@ -42,7 +42,7 @@ test('rewrites a test command sent through the PowerShell tool too (Windows agen
 
 test('uses CLAUDE_PLUGIN_ROOT for the alibi path when set', () => {
   const r = hook(PRE, { tool_name: 'Bash', tool_input: { command: 'pytest -q' } }, { CLAUDE_PLUGIN_ROOT: 'C:\\plugins\\alibi' });
-  assert.match(JSON.parse(r.out).hookSpecificOutput.updatedInput.command, /^node "C:\/plugins\/alibi\/skills\/alibi\/scripts\/alibi\.js" run --b64 /);
+  assert.match(JSON.parse(r.out).hookSpecificOutput.updatedInput.command, /^node "C:\/plugins\/alibi\/skills\/alibi\/scripts\/alibi\.js" run --shell bash --b64 /);
 });
 
 test('leaves non-test commands, other tools and already-wrapped commands alone', () => {

@@ -16,13 +16,16 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, appendFileSync, realpathSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { join, relative, resolve, sep, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 export const TEST_CMD = /\b(npm|pnpm|yarn|bun)\s+(run\s+)?(test|tests|test:[\w:-]+|jest|vitest|mocha)\b|\bnpx\s+(jest|vitest|mocha|playwright test|cypress run)\b|\bpytest\b|\bpython3?\s+-m\s+(pytest|unittest)\b|\bjest\b|\bvitest\b|\bmocha\b|\bgo test\b|\bcargo test\b|\bnode\s+--test\b|\bphpunit\b|\brspec\b|\bmvn\s+(test|verify)\b|\bgradle(w)?\s+test\b|\bdotnet test\b|\bmix test\b|\bswift test\b|\bflutter test\b|\bmake\s+test\b/;
-const SKIP_DIRS = new Set(['node_modules', '.git', '.alibi', 'dist', 'build', '.next', 'coverage', '.venv', 'venv', '__pycache__', 'target', '.turbo', '.cache', 'vendor']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.alibi', '.tollgate', 'dist', 'build', '.next', 'coverage', '.venv', 'venv', '__pycache__', 'target', '.turbo', '.cache', 'vendor']);
 const DIR = '.alibi';
+// state other tools keep in the working tree: writing it must not make a receipt STALE (found when tollgate's ledger did)
+const IGNORED = [DIR, '.tollgate'];
+const isIgnored = (p) => IGNORED.some(d => p === d || p.startsWith(d + '/'));
 const TAIL_LINES = 40;
 const MAX_HASH_BYTES = 5 * 1024 * 1024;
 
@@ -49,10 +52,10 @@ export function fingerprint(cwd = process.cwd()) {
       let p = line.slice(3).trim();
       if (p.includes(' -> ')) p = p.split(' -> ').pop();
       if (p.startsWith('"') && p.endsWith('"')) p = p.slice(1, -1);
-      if (p.startsWith(DIR + '/') || p === DIR) continue;
+      if (isIgnored(p)) continue;
       files[p] = fileSha(join(root, p)) ?? 'deleted';
     }
-    const diff = head === 'none' ? '' : (git(['diff', 'HEAD', '--binary', '--', '.', `:(exclude)${DIR}`], root) || '');
+    const diff = head === 'none' ? '' : (git(['diff', 'HEAD', '--binary', '--', '.', ...IGNORED.map(d => `:(exclude)${d}`)], root) || '');
     const tree = sha(head + '\n' + sha(diff) + '\n' + JSON.stringify(Object.entries(files).sort()));
     return { mode: 'git', root, head, tree, files };
   }
@@ -148,6 +151,7 @@ export function verify(idOrLast = 'last', cwd = process.cwd()) {
   if (key && !r.sig && !process.env.ALIBI_NO_SIGN) return { verdict: 'TAMPERED', id: r.id, reason: 'receipt is unsigned but this machine signs receipts.' };
   const base = { id: r.id, cmd: r.cmd, summary: r.summary, exitCode: r.exitCode, startedAt: r.startedAt, ageMs: Date.now() - Date.parse(r.startedAt) };
   if (r.exitCode !== 0) return { ...base, verdict: 'FAILED', reason: `the command exited ${r.exitCode}${r.summary ? ` (${summaryText(r.summary)})` : ''}.` };
+  if (r.summary && r.summary.failed > 0) return { ...base, verdict: 'FAILED', reason: `the command exited 0 but the runner reported ${summaryText(r.summary)} (a pipe or a later command can hide a failing exit code).` };
   const now = fingerprint(cwd);
   if (now.tree === r.tree.sha) return { ...base, verdict: 'VALID', reason: 'tree matches' };
   const changed = new Set();
@@ -158,7 +162,7 @@ export function verify(idOrLast = 'last', cwd = process.cwd()) {
     if (names) for (const n of names.split('\n')) if (n.trim()) changed.add(n.trim());
     if (!names) changed.add(`(HEAD moved ${r.tree.head.slice(0, 7)} → ${now.head.slice(0, 7)})`);
   }
-  const list = [...changed].filter(x => !x.startsWith(DIR));
+  const list = [...changed].filter(x => !isIgnored(x));
   return { ...base, verdict: 'STALE', changed: list, reason: `${list.length} file${list.length === 1 ? '' : 's'} changed since ${r.id}${list.length ? ` (${list.slice(0, 5).join(', ')}${list.length > 5 ? ', …' : ''})` : ''}. Re-run the tests.` };
 }
 
@@ -187,6 +191,24 @@ export function check(cwd = process.cwd()) {
 
 // shell: true uses cmd.exe on Windows; a command the agent wrote for the PowerShell tool needs PowerShell.
 export function shellFor(name) { return name === 'powershell' && process.platform === 'win32' ? 'powershell.exe' : true; }
+// The Bash tool runs bash (Git Bash on Windows), so a command it wrote must run there, not in cmd.exe: cmd does not
+// split on ";" and its pipeline exit code is the last command's, so "failing-tests | tail" got a VALID receipt.
+export function findBash() {
+  const cands = [];
+  if (process.env.CLAUDE_CODE_GIT_BASH_PATH) cands.push(process.env.CLAUDE_CODE_GIT_BASH_PATH);
+  if (/bash(\.exe)?$/i.test(process.env.SHELL || '')) cands.push(process.env.SHELL);
+  if (process.platform === 'win32') {
+    const g = (spawnSync('where', ['git'], { encoding: 'utf8' }).stdout || '').split(/\r?\n/)[0].trim();
+    if (g) cands.push(resolve(dirname(g), '..', 'bin', 'bash.exe'), resolve(dirname(g), '..', '..', 'bin', 'bash.exe'));
+    cands.push('C:\\Program Files\\Git\\bin\\bash.exe', join(process.env.LOCALAPPDATA || '', 'Programs', 'Git', 'bin', 'bash.exe'));
+  } else cands.push('/bin/bash', '/usr/bin/bash');
+  return cands.find(c => c && existsSync(c)) || null;
+}
+// [file, args, options] for spawn. "bash" falls back to the default shell when no bash is installed.
+export function spawnPlan(cmd, shell) {
+  if (shell === 'bash') { const b = findBash(); if (b) return [b, ['-c', 'set -o pipefail; ' + cmd], {}]; }
+  return [cmd, [], { shell: shellFor(shell === 'bash' ? undefined : shell) }];
+}
 export function run(cmd, cwd = process.cwd(), { shell } = {}) {
   return new Promise((resolveP) => {
     const startedAt = new Date().toISOString();
@@ -197,7 +219,8 @@ export function run(cmd, cwd = process.cwd(), { shell } = {}) {
     // NODE_TEST_CONTEXT), the nested runner would otherwise refuse to run the real tests.
     const env = { ...process.env, ALIBI_CHILD: '1' };
     delete env.NODE_TEST_CONTEXT; delete env.NODE_TEST_WORKER_ID;
-    const child = spawn(cmd, { cwd, shell: shellFor(shell), stdio: ['inherit', 'pipe', 'pipe'], env });
+    const [file, fileArgs, fileOpts] = spawnPlan(cmd, shell);
+    const child = spawn(file, fileArgs, { cwd, ...fileOpts, stdio: ['inherit', 'pipe', 'pipe'], env });
     const tap = (stream, out) => stream.on('data', (d) => { out.write(d); hasher.update(d); bytes += d.length; if (bytes < 2 * 1024 * 1024) chunks.push(d); });
     tap(child.stdout, process.stdout); tap(child.stderr, process.stderr);
     child.on('close', (code) => {
