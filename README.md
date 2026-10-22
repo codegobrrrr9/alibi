@@ -93,7 +93,7 @@ alibi check              CI gate: VALID receipt, clean tree, receipt HEAD == cur
 alibi list · show <id>
 ```
 
-One Node file, zero dependencies. Receipts live in `.alibi/` (added to `.gitignore` for you) and
+One Node file, zero dependencies. Receipts live in `.alibi/` (excluded through `.git/info/exclude`, so no tracked file changes) and
 are signed with a per-machine key in `~/.alibi/key`, so a receipt written by hand shows as
 TAMPERED. Summary lines are parsed for node:test, TAP, jest, vitest, pytest, unittest, go, cargo
 and mocha; anything else still gets the exit code, output hash and tail.

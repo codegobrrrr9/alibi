@@ -62,10 +62,11 @@ test('run writes a receipt, exits with the command code, footer on stderr, stdou
   assert.match(r.err, /alibi r-[0-9a-f]{8}\s+exit 0\s+3 passed, 0 failed\s+tree [0-9a-f]{8}/);
   assert.ok(!/alibi r-/.test(r.out), 'footer must not be on stdout');
   assert.ok(existsSync(join(dir, '.alibi', 'latest')));
-  assert.match(readFileSync(join(dir, '.gitignore'), 'utf8'), /^\.alibi\/$/m);
+  assert.match(readFileSync(join(dir, '.git', 'info', 'exclude'), 'utf8'), /^\.alibi\/$/m);
+  assert.ok(!existsSync(join(dir, '.gitignore')) || !/\.alibi/.test(readFileSync(join(dir, '.gitignore'), 'utf8')), 'the tracked .gitignore is left alone');
 });
 
-test('VALID right after a passing run, even though .gitignore was just edited', () => {
+test('VALID right after a passing run', () => {
   const v = verify('last', dir);
   assert.equal(v.verdict, 'VALID', JSON.stringify(v));
   // node --test prints the spec reporter on Node 23+, TAP on Node 22 when stdout is a pipe; both parse

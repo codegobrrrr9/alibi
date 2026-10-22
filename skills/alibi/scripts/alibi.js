@@ -97,11 +97,21 @@ function loadKey(create) {
   if (!create) return null;
   try { mkdirSync(join(homedir(), '.alibi'), { recursive: true }); const k = randomBytes(32).toString('hex'); writeFileSync(p, k, { mode: 0o600 }); return k; } catch { return null; }
 }
+// Receipts must not show up as changes. In a git repo the rule goes in .git/info/exclude, which is never committed:
+// writing the tracked .gitignore made an agent's feature commit carry an unrelated ".alibi/" line (seen in a real session).
+// Outside git there is no exclude file, so .gitignore stays the fallback.
 function ensureIgnored(root) {
-  const gi = join(root, '.gitignore');
   try {
-    const cur = existsSync(gi) ? readFileSync(gi, 'utf8') : '';
-    if (!/^\s*\.alibi\/?\s*$/m.test(cur)) appendFileSync(gi, (cur && !cur.endsWith('\n') ? '\n' : '') + '.alibi/\n');
+    const rel = git(['rev-parse', '--git-path', 'info/exclude'], root);
+    const files = [];
+    if (rel) files.push(resolve(root, rel.trim()));
+    files.push(join(root, '.gitignore'));
+    const has = (f) => { try { return /^\s*\.alibi\/?\s*$/m.test(readFileSync(f, 'utf8')); } catch { return false; } };
+    if (files.some(has)) return;
+    const target = files[0];
+    mkdirSync(dirname(target), { recursive: true });
+    const cur = existsSync(target) ? readFileSync(target, 'utf8') : '';
+    appendFileSync(target, (cur && !cur.endsWith('\n') ? '\n' : '') + '.alibi/\n');
   } catch { /* not fatal */ }
 }
 function receiptDir(root) { return join(root, DIR); }
