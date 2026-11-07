@@ -16,7 +16,6 @@ if (isMain) process.stdin.setEncoding('utf8');
 if (isMain) process.stdin.on('data', (d) => { raw += d; });
 if (isMain) process.stdin.on('end', () => {
   let input; try { input = JSON.parse(raw); } catch { process.exit(0); }
-  if (input.stop_hook_active) process.exit(0);
   const msg = String(input.last_assistant_message || '');
   if (!msg || !CLAIM.test(msg) || EXEMPT.test(msg)) process.exit(0);
   const root = process.env.CLAUDE_PLUGIN_ROOT || resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,6 +25,12 @@ if (isMain) process.stdin.on('end', () => {
   let v = null; try { v = JSON.parse(r.stdout); } catch { /* fallthrough */ }
   if (v && v.verdict === 'VALID') process.exit(0);
   const line = v ? (v.verdict === 'STALE' ? `STALE · ${v.reason}` : `${v.verdict} · ${v.reason || ''}`) : `could not verify (${r.error ? r.error.message : (r.stderr || '').trim().slice(0, 200) || 'alibi failed to run'})`;
+  if (input.stop_hook_active) {
+    // Loop guard: this stop already bounced once, so it is let through (blocking forever would trap an agent that will not run the tests).
+    // It is not let through silently: the person sees that the final claim has no receipt.
+    process.stdout.write(JSON.stringify({ systemMessage: `alibi: the agent finished claiming the tests pass with no VALID receipt (${line}). The Stop hook only blocks once, so this went through unproven. Run the tests yourself or ask for a re-run.` }) + '\n');
+    process.exit(0);
+  }
   process.stderr.write(`alibi: ${line}\nYour last message says the tests pass, but there is no VALID receipt for the current tree. Run the test command now (it is receipted automatically), read the alibi footer, then finish with the alibi status line. Do not restate the claim without a receipt.\n`);
   process.exit(2);
 });

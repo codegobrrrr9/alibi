@@ -21,8 +21,8 @@ Install the alibi skill from https://github.com/codegobrrrr9/alibi, refer to the
 ```
 
 Under Claude Code that installs a plugin with two hooks. From then on every test command the agent
-runs is receipted without it having to cooperate, and it cannot end a turn claiming the tests pass
-unless a receipt matches the code as it is right now. On other agents the rules apply and the CLI is
+runs is receipted without it having to cooperate, and the first time it tries to end a turn claiming the tests pass
+without a receipt that matches the code as it is right now, it is sent back to run them. On other agents the rules apply and the CLI is
 run by hand.
 
 No agent? Check any repo's last test run right now:
@@ -114,8 +114,9 @@ Refuse to merge anything that was not tested on the commit being merged:
   Output is unchanged, the footer is appended, the exit code is preserved. Nothing else is touched.
 - **Stop**: if the agent's final message claims passing tests (`tests pass`, `all green`, `12
   passed`, ✅ …) and `alibi verify last` is not VALID, the stop is blocked with the reason. The
-  agent gets one more turn to run the tests for real; a built-in loop guard means it cannot be
-  blocked twice in a row.
+  agent gets one more turn to run the tests for real. A built-in loop guard means it is blocked once per
+  attempt, not twice: if the agent stops again with the same claim and still no VALID receipt, the stop goes
+  through, and the hook tells you so with a warning (a `systemMessage`) instead of staying silent.
 
 The PreToolUse rewrite pre-approves the rewritten command, so test commands run without a
 permission prompt. Only commands that match the test-runner patterns are affected.
@@ -185,6 +186,11 @@ make the agent run tests through alibi and quote the receipt; that still gives y
 - **Rules**: [`skills/alibi/SKILL.md`](skills/alibi/SKILL.md).
 
 ## Honest limits
+
+The Stop hook blocks once. After one bounce, a second stop is let through even with no VALID receipt (otherwise an agent that
+will not run the tests would be trapped), and you get a warning that the final claim is unproven. Reported by a reader on X, who
+saw the second stop pass; before this fix it passed with no warning at all. The warning is tested at the hook's output; it has not yet been
+confirmed on screen in a live Claude Code session.
 
 A receipt proves a command ran and what it returned. It does not prove the tests are good, and it
 does not know whether `npm test` covers the file you changed. An agent with file access could forge

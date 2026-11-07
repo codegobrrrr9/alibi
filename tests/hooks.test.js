@@ -93,12 +93,17 @@ test('stop hook: allows when no claim, allows when stop_hook_active, blocks MISS
   spawnSync('git', ['-c', 'user.email=t@t.t', '-c', 'user.name=t', 'commit', '-qm', 'init'], { cwd: dir });
   try {
     assert.equal(hook(STOP, { last_assistant_message: 'Refactored the parser.', cwd: dir }).code, 0);
-    assert.equal(hook(STOP, { last_assistant_message: 'All tests pass.', cwd: dir, stop_hook_active: true }).code, 0);
+    // second stop (loop guard): let through, but never silently
+    let g = hook(STOP, { last_assistant_message: 'All tests pass.', cwd: dir, stop_hook_active: true });
+    assert.equal(g.code, 0);
+    assert.match(JSON.parse(g.out).systemMessage, /no VALID receipt \(MISSING/);
+    assert.equal(hook(STOP, { last_assistant_message: 'Refactored the parser.', cwd: dir, stop_hook_active: true }).out, '', 'no claim, no warning');
     let r = hook(STOP, { last_assistant_message: 'All tests pass.', cwd: dir });
     assert.equal(r.code, 2);
     assert.match(r.err, /alibi: MISSING/);
     assert.equal(spawnSync(process.execPath, [ALIBI, 'run', '--', 'npm test'], { cwd: dir, encoding: 'utf8' }).status, 0);
     assert.equal(hook(STOP, { last_assistant_message: 'Done. All 3 tests pass.', cwd: dir }).code, 0);
+    assert.equal(hook(STOP, { last_assistant_message: 'Done. All 3 tests pass.', cwd: dir, stop_hook_active: true }).out, '', 'a VALID receipt on the second stop gives no warning');
     appendFileSync(join(dir, 'src', 'math.js'), '\n// after\n');
     r = hook(STOP, { last_assistant_message: 'Done. All 3 tests pass.', cwd: dir });
     assert.equal(r.code, 2);

@@ -29,7 +29,8 @@ the tree it ran on. If you edit anything after the run, that receipt no longer d
    script, environment broken), say exactly that and stop. Do not claim.
 6. **If the Stop hook sends you back**, it means your last message claimed passing tests without a
    VALID receipt. Run the tests, read the footer, then finish with the status line. Do not argue
-   with the hook and do not rephrase the claim to dodge it.
+   with the hook and do not rephrase the claim to dodge it. The hook blocks once: a second stop goes through, but
+   the person is warned that your claim had no receipt, so run the tests rather than stop again.
 
 ## Commands
 
